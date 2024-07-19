@@ -4,7 +4,7 @@ This project demonstrates four different tasks using Streamlit, Firebase, and va
 
 ## Prerequisites
 
-Ensure you have the following installed:
+Ensure we have the following installed:
 
 - Python 3.x
 - Streamlit
@@ -16,7 +16,7 @@ Ensure you have the following installed:
 - numpy
 - pytesseract
 
-You can install the required packages using `pip`:
+We can install the required packages using `pip`:
 
 ```sh
 pip install -r requirements.txt
