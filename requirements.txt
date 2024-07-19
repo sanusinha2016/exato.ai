@@ -1,0 +1,8 @@
+streamlit
+streamlit-option-menu
+PyPDF2
+firebase-admin
+opencv-python-headless
+scikit-image
+matplotlib
+numpy
