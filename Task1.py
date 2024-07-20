@@ -3,7 +3,7 @@ import PyPDF2
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-cred = credentials.Certificate("exato-96bee-firebase-adminsdk-dft36-5a8af47540.json")
+cred = credentials.Certificate("exato-96bee-firebase-adminsdk-dft36-339c13aed5.json")
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
