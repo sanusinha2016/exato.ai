@@ -9,10 +9,22 @@ from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+from dotenv import load_dotenv
+from PIL import Image
+
+load_dotenv()
+
+cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+storage_bucket = os.getenv("FIREBASE_STORAGE_BUCKET")
 
 if not firebase_admin._apps:
+<<<<<<< HEAD
+    cred = credentials.Certificate(cred_path)
+    firebase_admin.initialize_app(cred, {'storageBucket': storage_bucket})
+=======
     cred = credentials.Certificate("key.json")
     firebase_admin.initialize_app(cred, {'storageBucket': 'exato-96bee.appspot.com'})
+>>>>>>> fc5ebc5e3606035ecc3ceca4d8d9cd1881772abf
 
 db = firestore.client()
 bucket = storage.bucket()
@@ -26,8 +38,83 @@ selected = option_menu(
     orientation="horizontal",
 )
 
+def fetch_image_paths(folder_path):
+    image_extensions = ('.png', '.jpg', '.jpeg', '.gif')
+    return [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(image_extensions)]
+
+def display_images_in_grid(image_paths, columns=3):
+    num_images = len(image_paths)
+    num_rows = (num_images + columns - 1) // columns  # Calculate number of rows needed
+    
+    selected_image = None
+
+    for row in range(num_rows):
+        cols = st.columns(columns)
+        for col in range(columns):
+            index = row * columns + col
+            if index < num_images:
+                with cols[col]:
+                    img_path = image_paths[index]
+                    img = Image.open(img_path)
+                    if st.button(f"Select {os.path.basename(img_path)}", key=img_path):
+                        selected_image = img_path
+                    st.image(img, caption=os.path.basename(img_path), use_column_width=True)
+            else:
+                with cols[col]:
+                    st.write("")
+
+    return selected_image
+
+def download_image(blob, download_path):
+    try:
+        image_data = blob.download_as_string()
+        with open(download_path, 'wb') as f:
+            f.write(image_data)
+    except Exception as e:
+        print(f"Error: {e}")
+
+def match_images(user_image):
+    user_img = cv2.imdecode(np.frombuffer(user_image, np.uint8), cv2.IMREAD_GRAYSCALE)
+    user_img = cv2.resize(user_img, (300, 300))
+
+    matched = False
+
+    for blob in bucket.list_blobs():
+        if blob.content_type and blob.content_type.startswith('image/'):
+            local_image_path = 'temp_image'
+            download_image(blob, local_image_path)
+
+            img = cv2.imread(local_image_path, cv2.IMREAD_GRAYSCALE)
+            if img is None:
+                print(f"Failed to read image {blob.name}")
+                continue
+
+            img = cv2.resize(img, (300, 300))
+            similarity = ssim(user_img, img)
+            similarity_value = similarity * 100
+
+            if similarity_value >= 99.99:
+                st.success(f"Signature Matched with {blob.name}")
+                st.write(f"Similarity with {blob.name} is {similarity_value:.2f}%")
+
+                fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+                axes[0].imshow(user_img, cmap='gray')
+                axes[0].set_title('User Image')
+                axes[1].imshow(img, cmap='gray')
+                axes[1].set_title('Firebase Image')
+                st.pyplot(fig)
+
+                os.remove(local_image_path)
+                matched = True
+                break
+
+            os.remove(local_image_path)
+
+    if not matched:
+        st.write("No matching image found.")
+
 if selected == "Task 1":
-    st.title("TASK 1 : PDF Text Extractor and Firestore Uploader")
+    st.title("TASK 1 : PDF text extract and store into database (FIREBASE).")
 
     def extract_text_from_pdf(pdf_file):
         reader = PyPDF2.PdfReader(pdf_file)
@@ -63,7 +150,7 @@ if selected == "Task 1":
                 st.write(text)
 
 elif selected == "Task 2":
-    st.title("TASK 2 : PDF Sentence Extractor and Firestore Uploader")
+    st.title("TASK 2 : Finding sentences containing words and store in database (FIREBASE). ")
 
     def extract_text_from_pdf(pdf_file):
         reader = PyPDF2.PdfReader(pdf_file)
@@ -116,65 +203,33 @@ elif selected == "Task 2":
                     st.write(f"- {sentence}")
 
 elif selected == "Task 3":
-    st.title("This can't be run online, as it not configured with AWS for computing and packages management.")
-
-
-
+    st.title("Task 3 : Extract the handwritten text from the PDF like Task-2 and persist into DB (FIREBASE)")
+    st.header("This can't be run online, as it not configured with AWS for computing and packages management.")
 
 elif selected == "Task 4":
-    st.title("Image Matcher with Firebase Storage")
+    st.title("Signature matching from database.")
 
-    def download_image(blob, download_path):
-        try:
-            image_data = blob.download_as_string()
-            with open(download_path, 'wb') as f:
-                f.write(image_data)
-        except Exception as e:
-            print(f"Error: {e}")
+    st.subheader("Choose an Image Source")
+    option = st.radio("Select image source", ["Select from Below Options","Upload Image", ])
 
-    def match_images(user_image):
-        user_img = cv2.imdecode(np.frombuffer(user_image, np.uint8), cv2.IMREAD_GRAYSCALE)
-        user_img = cv2.resize(user_img, (300, 300))
+    if option == "Upload Image":
+        uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg", "webp"])
 
-        matched = False
+        if uploaded_file is not None:
+            with st.spinner('Matching images...'):
+                user_image = uploaded_file.read()
+                match_images(user_image)
 
-        for blob in bucket.list_blobs():
-            if blob.content_type and blob.content_type.startswith('image/'):
-                local_image_path = 'temp_image'
-                download_image(blob, local_image_path)
+    elif option == "Select from Below Options":
+        st.subheader("Select a Signature Image")
+        folder_path = './Signature List'
+        image_paths = fetch_image_paths(folder_path)
+        
+        selected_image_path = display_images_in_grid(image_paths)
 
-                img = cv2.imread(local_image_path, cv2.IMREAD_GRAYSCALE)
-                if img is None:
-                    print(f"Failed to read image {blob.name}")
-                    continue
-
-                img = cv2.resize(img, (300, 300))
-                similarity = ssim(user_img, img)
-                similarity_value = similarity * 100
-
-                if similarity_value >= 99.99:
-                    st.success(f"Signature Matched with {blob.name}")
-                    st.write(f"Similarity with {blob.name} is {similarity_value:.2f}%")
-
-                    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-                    axes[0].imshow(user_img, cmap='gray')
-                    axes[0].set_title('User Image')
-                    axes[1].imshow(img, cmap='gray')
-                    axes[1].set_title('Firebase Image')
-                    st.pyplot(fig)
-
-                    os.remove(local_image_path)
-                    matched = True
-                    break
-
-                os.remove(local_image_path)
-
-        if not matched:
-            st.write("No matching image found.")
-
-    uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg", "webp"])
-
-    if uploaded_file is not None:
-        with st.spinner('Matching images...'):
-            user_image = uploaded_file.read()
-            match_images(user_image)
+        if selected_image_path:
+            st.write(f"Selected image for matching: {os.path.basename(selected_image_path)}")
+            with open(selected_image_path, 'rb') as f:
+                user_image = f.read()
+                with st.spinner('Matching images...'):
+                    match_images(user_image)
