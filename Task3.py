@@ -6,7 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 
-cred = credentials.Certificate("exato-96bee-firebase-adminsdk-dft36-339c13aed5.json")
+cred = credentials.Certificate("key.json")
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
