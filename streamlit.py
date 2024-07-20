@@ -18,13 +18,13 @@ cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 storage_bucket = os.getenv("FIREBASE_STORAGE_BUCKET")
 
 if not firebase_admin._apps:
-<<<<<<< HEAD
+
     cred = credentials.Certificate(cred_path)
     firebase_admin.initialize_app(cred, {'storageBucket': storage_bucket})
-=======
+
     cred = credentials.Certificate("key.json")
     firebase_admin.initialize_app(cred, {'storageBucket': 'exato-96bee.appspot.com'})
->>>>>>> fc5ebc5e3606035ecc3ceca4d8d9cd1881772abf
+
 
 db = firestore.client()
 bucket = storage.bucket()
